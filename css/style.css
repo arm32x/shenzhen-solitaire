@@ -55,6 +55,8 @@ a {
 	height: 237px;
 	background-image: url(../solitaire/card_front.png);
 	position: absolute;
+
+	border-radius: 9px;
 	
 	-webkit-touch-callout: none;
 	-webkit-user-select: none;
