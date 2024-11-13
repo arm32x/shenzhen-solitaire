@@ -780,7 +780,10 @@ function dragonBtnListener(b) {
 				}
 				$(b.selector).css('background-image', 'url(\'' + b.imgComplete + '\')').data('complete', true);
 				balanceCards();
-				onFieldUpdated();
+				onFieldUpdatedTimeout = setTimeout(function() {
+                    onFieldUpdatedTimeout = null;
+                    onFieldUpdated();
+                }, CARD_ANIMATION_SPEED);
 			}
 		}
 	};
