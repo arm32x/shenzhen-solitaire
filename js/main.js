@@ -567,6 +567,7 @@ var DRAGON_BTNS = [{
 /**
  * To be called when cards are done moving. Handles setting up the UI for dragons, etc.
  */
+var onFieldUpdatedTimeout = null;
 function onFieldUpdated() {
 	var i;
 	// prepare buttons if dragons are available
@@ -580,6 +581,10 @@ function onFieldUpdated() {
 			}
 		}
 	}
+    
+    if (onFieldUpdatedTimeout !== null) {
+        return;
+    }
 
 	// move cards to the out tray when possible.
 	// it is movable when there are no cards that can be placed on that card, and the destination is 1 less than this card.
@@ -655,7 +660,10 @@ function onFieldUpdated() {
 
 		if (canOut && outSlot) {
 			tweenCard(card, outSlot, outSlot.cards.length);
-			setTimeout(onFieldUpdated, CARD_ANIMATION_SPEED);
+			onFieldUpdatedTimeout = setTimeout(function() {
+                onFieldUpdatedTimeout = null;
+                onFieldUpdated();
+            }, CARD_ANIMATION_SPEED);
 			// don't move any more top cards in this iteration, next will be moved after this card finishes.
 			break;
 		}
