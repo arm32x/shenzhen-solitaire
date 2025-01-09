@@ -950,7 +950,7 @@ function startNewGame(cards, board, seed) {
 
 	shuffleArray(cards); // shuffle cards
 
-	$('.card').finish().removeClass('card-reverse');
+	$('.card').finish().removeClass('card-reverse grand_dragon grand_dragon_2');
 	$('.btn-dragon').data('complete', false);
 	placeCardsInTray(cards, board, SLOTS.TRAY); // place cards
 	$('.card').visible();
