@@ -616,16 +616,35 @@ function onFieldUpdated() {
 	for (i = 0; i < movableTops.length; i++) {
 		var canOut = true;
 		var outSlot = undefined;
-		var cardAbove = undefined;
 
 		card = movableTops[i];
 		if (card.special == SPECIAL.FLOWER) {
 			// flower can always move to flower slot.
 			outSlot = SLOTS.FLOWER[0];
-		} else if (card.value > 2) {
-			// output only if all cards with -1 value are in the out tray.
+		} else if (card.value > 1) {
+			// output only if the card of the same suit with -1 value is in the out tray,
+			// AND if all cards with different suits and -2 value are in the out tray.
 			for (var suit in SUITS) {
-				cardAbove = getCard(card.value - 1, SUITS[suit]);
+				var cardAbove;
+
+				if (card.suit === SUITS[suit]) {
+					// For checking the same suit, check if the value above has been placed.
+					cardAbove = getCard(card.value - 1, SUITS[suit]);
+				} else {
+					// For a different suit, the reasoning is more complex.
+					// The top card itself is free to move up if no other card would have a reason to be placed on it.
+					//   Cards placable on it would have a value -1 from the top card.
+					//   If the slot -1 from THAT card (-2 from the movable top card) is filled,
+					//   then the moment the -1 card is revealed it will be moved, so the top card has no reason to consider that card as a reason to stay.
+
+					// The 2 card doesn't care about the cards in other suits with -2 values.
+					if (card.value === 2) {
+						continue;
+					}
+
+					cardAbove = getCard(card.value - 2, SUITS[suit]);
+				}
+
 				if (cardAbove) {
 					if (cardAbove.slot.type != 'out') {
 						canOut = false;
@@ -636,16 +655,6 @@ function onFieldUpdated() {
 							outSlot = cardAbove.slot;
 						}
 					}
-				}
-			}
-		} else if (card.value === 2) {
-			// output only if the '1' valued card with same suit is in the out tray.
-			cardAbove = getCard(1, card.suit);
-			if (cardAbove) {
-				if (cardAbove.slot.type != 'out') {
-					canOut = false;
-				} else {
-					outSlot = cardAbove.slot;
 				}
 			}
 		} else {
@@ -797,6 +806,9 @@ function dragonBtnListener(b) {
  */
 function dragonEnterLeaveListener(b, isEnter) {
 	return function () {
+		if (dragging) {
+			return;
+		}
 		var cards = getSpecialCards(b.type);
 
 		for (var i = 0; i < cards.length; i++) {
@@ -1053,6 +1065,7 @@ function getStackFromCardElement(cardElement) {
 }
 
 var cards;
+var dragging = false;
 $(document).ready(function () {
 
 	if (useLocalStorage) {
@@ -1071,29 +1084,34 @@ $(document).ready(function () {
 	startNewGame(cards, board, location.hash.replace('#', ''));
 
 	$('#newGame').click(function () {
+		// Replace the current state with the previous game
+		if (!location.hash) {
+			history.replaceState('', document.title, window.location.pathname + window.location.search + '#' + currentSeed);
+		}
 		// clear the hash from the url.
 		history.pushState('', document.title, window.location.pathname + window.location.search);
 
 		startNewGame(cards, board);
 	});
 
-	$('#seedGame').click(function () {
-		// prompt the user for a seed.
-		var seed = prompt('Enter the random seed for this game.');
-		if (seed !== null) {
-			location.hash = seed;
-			startNewGame(cards, board, seed);
-		}
-	});
-
 	$('#retryGame').click(function () {
 		if (currentSeed !== null) {
-			location.hash = currentSeed;
-			startNewGame(cards, board, currentSeed);
+			if (location.hash.replace('#', '') === currentSeed.toString()) {
+				startNewGame(cards, board, location.hash.replace('#', ''));
+			} else {
+				location.hash = currentSeed;
+				// Triggers hashchange
+			}
 		}
 	});
 
-	$('#playMusicButton').click(function() {
+	addEventListener("hashchange", function () {
+		if (location.hash.replace('#', '')) {
+			startNewGame(cards, board, location.hash.replace('#', ''));
+		}
+	});
+
+	$('#playMusicButton').click(function () {
 		music.play();
 		if (music.currentTime > 0 && music.currentTime < 5) {
 			music.currentTime = 0;
@@ -1102,7 +1120,7 @@ $(document).ready(function () {
 		$('#pauseMusicButton').show();
 	});
 
-	$('#pauseMusicButton').click(function() {
+	$('#pauseMusicButton').click(function () {
 		music.pause();
 		$('#playMusicButton').show();
 		$('#pauseMusicButton').hide();
@@ -1157,7 +1175,7 @@ $(document).ready(function () {
 			var cardIndex = card.slot.cards.indexOf(card),
 				cardLength = card.slot.cards.length;
 
-			for (var i = cardIndex, height = 0; i < cardLength; i++ , height++) {
+			for (var i = cardIndex, height = 0; i < cardLength; i++, height++) {
 				var e = card.slot.cards[i].element.clone();
 				e.css({
 					top: height * CARD_STACK_GAP,
@@ -1182,6 +1200,7 @@ $(document).ready(function () {
 				for (i = 0; i < stack.length; i++) {
 					stack[i].element.invisible();
 				}
+				dragging = true;
 			} else {
 				event.stopPropagation();
 				event.stopImmediatePropagation();
@@ -1189,6 +1208,7 @@ $(document).ready(function () {
 			}
 		},
 		stop: function (_event, _ui) {
+			dragging = false;
 			var card = $(this).data('card');
 
 			var cardIndex = card.slot.cards.indexOf(card),
@@ -1218,7 +1238,7 @@ $(document).ready(function () {
 
 	music = new Audio("solitaire/Solitaire.ogg");
 	music.loop = true;
-	$(music).on('canplay', function() {
+	$(music).on('canplay', function () {
 		$('#playMusicButton').show();
 		$(music).off('canplay');
 	})
